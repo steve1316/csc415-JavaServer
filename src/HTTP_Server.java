@@ -61,6 +61,8 @@ public class HTTP_Server implements Runnable
         BufferedOutputStream dataOutput = null;
         String fileRequested = null;
 
+        GET_HEAD methodRequestGETHEAD = null;
+
         try
         {
             //read in string from client
@@ -84,8 +86,10 @@ public class HTTP_Server implements Runnable
             //we get the file requested
             fileRequested = parse.nextToken().toLowerCase();
 
-            //if method does not match GET and HEAD methods
-            if(!method.equals("GET") && !method.equals("HEAD"))
+            methodRequestGETHEAD = new GET_HEAD();
+
+            //if method does not match GET and GET_HEAD methods
+            if(!method.equals("GET") && !method.equals("GET_HEAD"))
             {
                 if(verbose)
                 {
@@ -95,19 +99,10 @@ public class HTTP_Server implements Runnable
                 //return the not supported file to client
                 File file = new File(webRoot, methodNotSupported);
                 int fileLength = (int) file.length();
-                String contentType = "text/html";
+                methodRequestGETHEAD.setContentType(fileRequested);
+                methodRequestGETHEAD.readFileData(file, fileLength);
 
-                //read content to return to client
-                byte[] fileData = readFileData(file, fileLength);
-
-                //we send HTTP headers with data to client
-                output.println("HTTP/1.1 501 Not Implemented");
-                output.println("Server: Java HTTP Server from Steve Tu : 1.0");
-                output.println("Date: " + new Date());
-                output.println("Content type: " + contentType);
-                output.println("Content length: " + fileLength);
-                output.println();
-                output.flush();
+                methodRequestGETHEAD.notImplementedConfirmation(output, fileLength);
             }
             else
             {
@@ -119,38 +114,30 @@ public class HTTP_Server implements Runnable
 
                 File file = new File(webRoot, fileRequested);
                 int fileLength = (int) file.length();
-                String content = getContentType(fileRequested);
+                methodRequestGETHEAD.setContentType(fileRequested);
 
                 //GET method to return content
                 if(method.equals("GET"))
                 {
-                    byte[] fileData = readFileData(file, fileLength);
-
-                    //send HTTP headers
-                    output.println("HTTP/1.1 200 OK");
-                    output.println("Server: Java HTTP Server from Steve Tu : 1.0");
-                    output.println("Date: " + new Date());
-                    output.println("Content type: " + content);
-                    output.println("Content length: " + fileLength);
-                    output.println();
-                    output.flush();
-
-                    dataOutput.write(fileData, 0, fileLength);
-                    dataOutput.flush();
+                    methodRequestGETHEAD.readFileData(file, fileLength);
+                    methodRequestGETHEAD.getConfirmation(output, dataOutput, fileLength);
                 }
 
                 if(verbose)
                 {
-                    System.out.println("File " + fileRequested + " of type " + content + " returned");
+                    System.out.println("File " + fileRequested + " of type " + methodRequestGETHEAD.getContentType() + " returned");
                 }
             }
-
-
         }
         catch(FileNotFoundException e)
         {
-            try{
-                fileNotFound(output, dataOutput, fileRequested);
+            try
+            {
+                File file = new File(webRoot, fileNotFound);
+                int fileLength = (int) file.length();
+                methodRequestGETHEAD.readFileData(file, fileLength);
+                methodRequestGETHEAD.setContentType(fileRequested);
+                methodRequestGETHEAD.fileNotFoundConfirmation(output, dataOutput, fileLength);
             }
             catch(IOException ioe)
             {
@@ -181,64 +168,6 @@ public class HTTP_Server implements Runnable
             {
                 System.out.println("Connection closed.\n");
             }
-        }
-    }
-
-    private byte[] readFileData(File file, int fileLength) throws IOException
-    {
-        FileInputStream fileInput = null;
-        byte[] fileData = new byte[fileLength];
-
-        try
-        {
-            fileInput = new FileInputStream(file);
-            fileInput.read(fileData);
-        }
-        finally
-        {
-            if(fileInput != null)
-            {
-                fileInput.close();
-            }
-        }
-
-        return fileData;
-    }
-
-    private String getContentType(String fileRequested)
-    {
-        if(fileRequested.endsWith(".htm") || fileRequested.endsWith(".html"))
-        {
-            return "text/html";
-        }
-        else
-        {
-            return "text/plain";
-        }
-    }
-
-    private void fileNotFound(PrintWriter output, OutputStream dataOutput, String fileRequested) throws IOException
-    {
-        File file = new File(webRoot, fileNotFound);
-        int fileLength = (int) file.length();
-        String content = "text/html";
-        byte[] fileData = readFileData(file, fileLength);
-
-        //send HTTP headers
-        output.println("HTTP/1.1 404 File Not Found");
-        output.println("Server: Java HTTP Server from Steve Tu : 1.0");
-        output.println("Date: " + new Date());
-        output.println("Content type: " + content);
-        output.println("Content length: " + fileLength);
-        output.println();
-        output.flush();
-
-        dataOutput.write(fileData, 0, fileLength);
-        dataOutput.flush();
-
-        if(verbose)
-        {
-            System.out.println("File " + fileRequested + " not found");
         }
     }
 }
