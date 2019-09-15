@@ -6,18 +6,19 @@ import java.util.StringTokenizer;
 
 public class HTTP_Server implements Runnable
 {
+    //Default files to send for certain situations.
     static final File webRoot = new File(".");
     static final String defaultFile = "index.html";
     static final String fileNotFound = "404.html";
     static final String methodNotSupported = "not_supported.html";
 
-    //port to listen connection
+    //Port for listening.
     static final int port = 8080;
 
-    //verbose mode
+    //Verbose mode to print server statuses to console.
     static final boolean verbose = true;
 
-    //Client connection via Socket class
+    //Client connection via Socket class.
     private Socket clientSocketConnection;
 
     public HTTP_Server(Socket myConnection)
@@ -30,9 +31,9 @@ public class HTTP_Server implements Runnable
         try
         {
             ServerSocket serverConnection = new ServerSocket(port);
-            System.out.println("Server started.\nListening for connections on port: " + port + "...\n");
+            System.out.println("Server started. Listening for connections on port: " + port + "...\n");
 
-            //listen until user halts server execution
+            //Listen until user halts server execution.
             while(true)
             {
                 HTTP_Server myServer = new HTTP_Server(serverConnection.accept());
@@ -42,71 +43,69 @@ public class HTTP_Server implements Runnable
                     System.out.println("Connection opened. (" + new Date() + ")");
                 }
 
-                //create dedicated thread to manage client connection
+                //Create thread to manage the server.
                 Thread thread = new Thread(myServer);
                 thread.start();
             }
         }
         catch(IOException e)
         {
-            System.out.println("Server Connection error via port: " + e.getMessage());
+            System.out.println("Server connection error via port: " + port);
         }
     }
 
     public void run()
     {
-        //manage client connection
+        //Grab the portion of the request that contains the file name for GET and HEAD.
+        String fileRequested = null;
+
+        //input to grab user request, output for headers, and dataOutput for sending files to user.
         BufferedReader input = null;
         PrintWriter output = null;
         BufferedOutputStream dataOutput = null;
-        String fileRequested = null;
 
+        //Create an instance of GET_HEAD object.
         GET_HEAD methodRequestGETHEAD = null;
 
         try
         {
-            //read in string from client
+            //Setup input and output streams.
             input = new BufferedReader(new InputStreamReader(clientSocketConnection.getInputStream()));
-
-            //get character output stream to client (for headers)
             output = new PrintWriter(clientSocketConnection.getOutputStream());
-
-            //get binary output stream to client (for requested data)
             dataOutput = new BufferedOutputStream(clientSocketConnection.getOutputStream());
 
-            //get first line of the request from client
+            //Get the request from client.
             String inputString = input.readLine();
 
-            //we parse the request with a string tokenizer
+            //Parse the request with a string tokenizer.
             StringTokenizer parse = new StringTokenizer(inputString);
 
-            //we get the HTTP method of the client
+            //Grab the HTTP method of the client.
             String method = parse.nextToken().toUpperCase();
 
-            //we get the file requested
+            //Get the file requested.
             fileRequested = parse.nextToken().toLowerCase();
 
             methodRequestGETHEAD = new GET_HEAD();
 
-            //if method does not match GET and GET_HEAD methods
-            if(!method.equals("GET") && !method.equals("GET_HEAD"))
+            //if method does not match GET and GET_HEAD methods.
+            if(!method.equals("GET") && !method.equals("HEAD"))
             {
                 if(verbose)
                 {
                     System.out.println(method + " is not supported yet.");
                 }
 
-                //return the not supported file to client
+                //Return the not supported file to client.
                 File file = new File(webRoot, methodNotSupported);
                 int fileLength = (int) file.length();
                 methodRequestGETHEAD.setContentType(fileRequested);
                 methodRequestGETHEAD.readFileData(file, fileLength);
-
-                methodRequestGETHEAD.notImplementedConfirmation(output, fileLength);
+                methodRequestGETHEAD.notImplementedConfirmation(output, dataOutput, fileLength);
             }
             else
             {
-                //GET and HEAD methods are supported
+                //GET and HEAD methods are supported.
                 if(fileRequested.endsWith("/"));
                 {
                     fileRequested += defaultFile;
@@ -115,12 +114,20 @@ public class HTTP_Server implements Runnable
                 File file = new File(webRoot, fileRequested);
                 int fileLength = (int) file.length();
                 methodRequestGETHEAD.setContentType(fileRequested);
+                methodRequestGETHEAD.readFileData(file, fileLength);
 
-                //GET method to return content
+                //GET method to return files.
                 if(method.equals("GET"))
                 {
-                    methodRequestGETHEAD.readFileData(file, fileLength);
+                    //methodRequestGETHEAD.readFileData(file, fileLength);
                     methodRequestGETHEAD.getConfirmation(output, dataOutput, fileLength);
+                }
+
+                //HEAD method to return only the header of the requested file.
+                else if(method.equals("HEAD"))
+                {
+                    //methodRequestGETHEAD.readFileData(file, fileLength);
+                    methodRequestGETHEAD.getHEADRequest(output, fileLength);
                 }
 
                 if(verbose)
@@ -133,6 +140,7 @@ public class HTTP_Server implements Runnable
         {
             try
             {
+                //Return the File Not Found html file.
                 File file = new File(webRoot, fileNotFound);
                 int fileLength = (int) file.length();
                 methodRequestGETHEAD.readFileData(file, fileLength);
@@ -156,7 +164,7 @@ public class HTTP_Server implements Runnable
                 output.close();
                 dataOutput.close();
 
-                //Close socket connection
+                //Close the socket connection.
                 clientSocketConnection.close();
             }
             catch(Exception e)

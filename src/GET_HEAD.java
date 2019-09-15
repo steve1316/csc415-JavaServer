@@ -8,6 +8,7 @@ public class GET_HEAD extends Request
         FileInputStream fileInput = null;
         byte[] fileData = new byte[fileLength];
 
+        //Read in the file and save it to fileData as a array of bytes. If not, close the FileInputStream.
         try
         {
             fileInput = new FileInputStream(file);
@@ -24,11 +25,28 @@ public class GET_HEAD extends Request
         this.fileData = fileData;
     }
 
-    public void notImplementedConfirmation(PrintWriter output, int fileLength)
+    public void notImplementedConfirmation(PrintWriter output, BufferedOutputStream dataOutput, int fileLength) throws IOException
     {
-        //send HTTP headers
+        //Send HTTP headers.
+        output.println();
         output.println("HTTP/1.0 501 Not Implemented");
-        output.println("Server: Java HTTP Server from Steve Tu : 1.0");
+        output.println("Server: Java HTTP Server from Steve Tu");
+        output.println("Date: " + new Date());
+        output.println("Content type: " + contentType);
+        output.println("Content length: " + fileLength);
+        output.println();
+        output.flush();
+
+        dataOutput.write(fileData, 0, fileLength);
+        dataOutput.flush();
+    }
+
+    public void getHEADRequest(PrintWriter output, int fileLength)
+    {
+        //Send HTTP headers.
+        output.println();
+        output.println("HTTP/1.0 200 OK");
+        output.println("Server: Java HTTP Server from Steve Tu");
         output.println("Date: " + new Date());
         output.println("Content type: " + contentType);
         output.println("Content length: " + fileLength);
@@ -38,9 +56,10 @@ public class GET_HEAD extends Request
 
     public void getConfirmation(PrintWriter output, BufferedOutputStream dataOutput, int fileLength) throws IOException
     {
-        //send HTTP headers
+        //Send HTTP headers.
+        output.println();
         output.println("HTTP/1.0 200 OK");
-        output.println("Server: Java HTTP Server from Steve Tu : 1.0");
+        output.println("Server: Java HTTP Server from Steve Tu");
         output.println("Date: " + new Date());
         output.println("Content type: " + contentType);
         output.println("Content length: " + fileLength);
@@ -54,6 +73,7 @@ public class GET_HEAD extends Request
     public void fileNotFoundConfirmation(PrintWriter output, BufferedOutputStream dataOutput, int fileLength) throws IOException
     {
         //send HTTP headers
+        output.println();
         output.println("HTTP/1.0 404 File Not Found");
         output.println("Server: Java HTTP Server from Steve Tu : 1.0");
         output.println("Date: " + new Date());

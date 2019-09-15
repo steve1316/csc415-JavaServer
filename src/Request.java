@@ -23,8 +23,16 @@ abstract public class Request
         return contentType;
     }
 
+    //Sets contentType to the appropriate file type based on the given file name string.
     public void setContentType(String contentType)
     {
-        this.contentType = contentType;
+        if(contentType.endsWith(".htm") || contentType.endsWith(".html"))
+        {
+            this.contentType = "text/html";
+        }
+        else
+        {
+            this.contentType = "text/plain";
+        }
     }
 }
