@@ -1,7 +1,7 @@
 import java.io.*;
 import java.util.Date;
 
-public class GET_HEAD extends Request
+public class GET_HEAD_PUT extends Request
 {
     public void readFileData(File file, int fileLength) throws IOException
     {
@@ -68,6 +68,25 @@ public class GET_HEAD extends Request
 
         dataOutput.write(fileData, 0, fileLength);
         dataOutput.flush();
+    }
+
+    public void putConfirmation(PrintWriter output, BufferedOutputStream dataOutput, int fileLength, String fileBody) throws IOException
+    {
+        //Write to server first.
+        dataOutput.write(fileBody.getBytes());
+        dataOutput.flush();
+
+        //Send HTTP headers.
+        output.println();
+        output.println("HTTP/1.0 200 OK");
+        output.println("Server: Java HTTP Server from Steve Tu");
+        output.println("Date: " + new Date());
+        output.println("Content type: " + contentType);
+        output.println("Content length: " + fileLength);
+        output.println("File Body" + fileBody);
+        output.println();
+        output.flush();
+
     }
 
     public void fileNotFoundConfirmation(PrintWriter output, BufferedOutputStream dataOutput, int fileLength) throws IOException

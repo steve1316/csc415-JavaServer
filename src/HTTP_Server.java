@@ -59,13 +59,17 @@ public class HTTP_Server implements Runnable
         //Grab the portion of the request that contains the file name for GET and HEAD.
         String fileRequested = null;
 
-        //input to grab user request, output for headers, and dataOutput for sending files to user.
+        //Grab the portion of the request that contains the file body for PUT.
+        String fileBody = null;
+
+        //input to grab user request, output for headers, and dataOutput for sending files to user, and dataInput to write data to server.
         BufferedReader input = null;
         PrintWriter output = null;
         BufferedOutputStream dataOutput = null;
+        BufferedInputStream dataInput = null;
 
         //Create an instance of GET_HEAD object.
-        GET_HEAD methodRequestGETHEAD = null;
+        GET_HEAD_PUT methodRequestGET_HEAD_PUT = null;
 
         try
         {
@@ -73,6 +77,7 @@ public class HTTP_Server implements Runnable
             input = new BufferedReader(new InputStreamReader(clientSocketConnection.getInputStream()));
             output = new PrintWriter(clientSocketConnection.getOutputStream());
             dataOutput = new BufferedOutputStream(clientSocketConnection.getOutputStream());
+            dataInput = new BufferedInputStream(clientSocketConnection.getInputStream());
 
             //Get the request from client.
             String inputString = input.readLine();
@@ -86,10 +91,13 @@ public class HTTP_Server implements Runnable
             //Get the file requested.
             fileRequested = parse.nextToken().toLowerCase();
 
-            methodRequestGETHEAD = new GET_HEAD();
+            //Get the fileBody from parse.
+            fileBody = parse.nextToken();
+
+            methodRequestGET_HEAD_PUT = new GET_HEAD_PUT();
 
             //if method does not match GET and GET_HEAD methods.
-            if(!method.equals("GET") && !method.equals("HEAD"))
+            if(!method.equals("GET") && !method.equals("HEAD") && !method.equals("PUT"))
             {
                 if(verbose)
                 {
@@ -99,13 +107,13 @@ public class HTTP_Server implements Runnable
                 //Return the not supported file to client.
                 File file = new File(webRoot, methodNotSupported);
                 int fileLength = (int) file.length();
-                methodRequestGETHEAD.setContentType(fileRequested);
-                methodRequestGETHEAD.readFileData(file, fileLength);
-                methodRequestGETHEAD.notImplementedConfirmation(output, dataOutput, fileLength);
+                methodRequestGET_HEAD_PUT.setContentType(fileRequested);
+                methodRequestGET_HEAD_PUT.readFileData(file, fileLength);
+                methodRequestGET_HEAD_PUT.notImplementedConfirmation(output, dataOutput, fileLength);
             }
             else
             {
-                //GET and HEAD methods are supported.
+                //GET, HEAD, and PUT methods are supported.
                 if(fileRequested.endsWith("/"));
                 {
                     fileRequested += defaultFile;
@@ -113,26 +121,32 @@ public class HTTP_Server implements Runnable
 
                 File file = new File(webRoot, fileRequested);
                 int fileLength = (int) file.length();
-                methodRequestGETHEAD.setContentType(fileRequested);
-                methodRequestGETHEAD.readFileData(file, fileLength);
+                methodRequestGET_HEAD_PUT.setContentType(fileRequested);
+                methodRequestGET_HEAD_PUT.readFileData(file, fileLength);
 
                 //GET method to return files.
                 if(method.equals("GET"))
                 {
                     //methodRequestGETHEAD.readFileData(file, fileLength);
-                    methodRequestGETHEAD.getConfirmation(output, dataOutput, fileLength);
+                    methodRequestGET_HEAD_PUT.getConfirmation(output, dataOutput, fileLength);
                 }
 
                 //HEAD method to return only the header of the requested file.
                 else if(method.equals("HEAD"))
                 {
                     //methodRequestGETHEAD.readFileData(file, fileLength);
-                    methodRequestGETHEAD.getHEADRequest(output, fileLength);
+                    methodRequestGET_HEAD_PUT.getHEADRequest(output, fileLength);
+                }
+
+                //PUT method to write data to file.
+                else if(method.equals("PUT"))
+                {
+                    methodRequestGET_HEAD_PUT.putConfirmation(output, dataOutput, fileLength, fileBody);
                 }
 
                 if(verbose)
                 {
-                    System.out.println("File " + fileRequested + " of type " + methodRequestGETHEAD.getContentType() + " returned");
+                    System.out.println("File " + fileRequested + " of type " + methodRequestGET_HEAD_PUT.getContentType() + " returned");
                 }
             }
         }
@@ -143,9 +157,9 @@ public class HTTP_Server implements Runnable
                 //Return the File Not Found html file.
                 File file = new File(webRoot, fileNotFound);
                 int fileLength = (int) file.length();
-                methodRequestGETHEAD.readFileData(file, fileLength);
-                methodRequestGETHEAD.setContentType(fileRequested);
-                methodRequestGETHEAD.fileNotFoundConfirmation(output, dataOutput, fileLength);
+                methodRequestGET_HEAD_PUT.readFileData(file, fileLength);
+                methodRequestGET_HEAD_PUT.setContentType(fileRequested);
+                methodRequestGET_HEAD_PUT.fileNotFoundConfirmation(output, dataOutput, fileLength);
             }
             catch(IOException ioe)
             {
