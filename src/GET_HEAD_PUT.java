@@ -72,10 +72,6 @@ public class GET_HEAD_PUT extends Request
 
     public void putConfirmation(PrintWriter output, BufferedOutputStream dataOutput, int fileLength, String fileBody) throws IOException
     {
-        //Write to server first.
-        dataOutput.write(fileBody.getBytes());
-        dataOutput.flush();
-
         //Send HTTP headers.
         output.println();
         output.println("HTTP/1.0 200 OK");
@@ -83,10 +79,13 @@ public class GET_HEAD_PUT extends Request
         output.println("Date: " + new Date());
         output.println("Content type: " + contentType);
         output.println("Content length: " + fileLength);
-        output.println("File Body" + fileBody);
+        output.println("File Body: " + fileBody);
         output.println();
         output.flush();
 
+        //Write to server first.
+        dataOutput.write(fileData, 0, fileLength);
+        dataOutput.flush();
     }
 
     public void fileNotFoundConfirmation(PrintWriter output, BufferedOutputStream dataOutput, int fileLength) throws IOException

@@ -3,6 +3,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Date;
 import java.util.StringTokenizer;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class HTTP_Server implements Runnable
 {
@@ -17,6 +19,8 @@ public class HTTP_Server implements Runnable
 
     //Verbose mode to print server statuses to console.
     static final boolean verbose = true;
+
+    static boolean serverStopped = false;
 
     //Client connection via Socket class.
     private Socket clientSocketConnection;
@@ -34,7 +38,7 @@ public class HTTP_Server implements Runnable
             System.out.println("Server started. Listening for connections on port: " + port + "...\n");
 
             //Listen until user halts server execution.
-            while(true)
+            while(!serverStopped)
             {
                 HTTP_Server myServer = new HTTP_Server(serverConnection.accept());
 
@@ -54,19 +58,31 @@ public class HTTP_Server implements Runnable
         }
     }
 
+    public synchronized void stop()
+    {
+        this.serverStopped = true;
+        try{
+            this.clientSocketConnection.close();
+        }catch(IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public void run()
     {
         //Grab the portion of the request that contains the file name for GET and HEAD.
         String fileRequested = null;
 
         //Grab the portion of the request that contains the file body for PUT.
-        String fileBody = null;
+        //String fileBody = null;
+        int fileBodyLength = -1;
+        BufferedWriter fileBW = null;
 
         //input to grab user request, output for headers, and dataOutput for sending files to user, and dataInput to write data to server.
         BufferedReader input = null;
         PrintWriter output = null;
         BufferedOutputStream dataOutput = null;
-        BufferedInputStream dataInput = null;
 
         //Create an instance of GET_HEAD object.
         GET_HEAD_PUT methodRequestGET_HEAD_PUT = null;
@@ -77,11 +93,10 @@ public class HTTP_Server implements Runnable
             input = new BufferedReader(new InputStreamReader(clientSocketConnection.getInputStream()));
             output = new PrintWriter(clientSocketConnection.getOutputStream());
             dataOutput = new BufferedOutputStream(clientSocketConnection.getOutputStream());
-            dataInput = new BufferedInputStream(clientSocketConnection.getInputStream());
 
             //Get the request from client.
             String inputString = input.readLine();
-
+            
             //Parse the request with a string tokenizer.
             StringTokenizer parse = new StringTokenizer(inputString);
 
@@ -92,12 +107,12 @@ public class HTTP_Server implements Runnable
             fileRequested = parse.nextToken().toLowerCase();
 
             //Get the fileBody from parse.
-            fileBody = parse.nextToken();
+            //fileBody = parse.nextToken();
 
             methodRequestGET_HEAD_PUT = new GET_HEAD_PUT();
 
             //if method does not match GET and GET_HEAD methods.
-            if(!method.equals("GET") && !method.equals("HEAD") && !method.equals("PUT"))
+            if(!method.equals("GET") && !method.equals("HEAD") && !method.equals("PUT") && !method.equals("POST"))
             {
                 if(verbose)
                 {
@@ -113,14 +128,23 @@ public class HTTP_Server implements Runnable
             }
             else
             {
+                //fileRequested.endsWith("/") && !fileRequested.startsWith("/")
                 //GET, HEAD, and PUT methods are supported.
-                if(fileRequested.endsWith("/"));
+
+                int check = fileRequested.length();
+
+                if(fileRequested.startsWith("/") && check == 1)
                 {
                     fileRequested += defaultFile;
                 }
 
+                fileRequested = fileRequested.substring(1, fileRequested.length());
+
+                fileBW = new BufferedWriter(new FileWriter(fileRequested, true));
+
                 File file = new File(webRoot, fileRequested);
                 int fileLength = (int) file.length();
+
                 methodRequestGET_HEAD_PUT.setContentType(fileRequested);
                 methodRequestGET_HEAD_PUT.readFileData(file, fileLength);
 
@@ -139,9 +163,37 @@ public class HTTP_Server implements Runnable
                 }
 
                 //PUT method to write data to file.
-                else if(method.equals("PUT"))
+                else if(method.equals("PUT") || method.equals("POST"))
                 {
-                    methodRequestGET_HEAD_PUT.putConfirmation(output, dataOutput, fileLength, fileBody);
+                    //methodRequestGET_HEAD_PUT.contentType = "application/x-www-form-urlencoded";
+
+                    String userInput;
+                    String contentLengthStr = "Content-Length: ";
+
+                    while(true)
+                    {
+                        userInput = input.readLine();
+                        System.out.println("InputStream: " + userInput);
+                        if(userInput.startsWith(contentLengthStr))
+                        {
+                            fileBodyLength = Integer.parseInt(userInput.substring(contentLengthStr.length()));
+                        }
+
+                        if(userInput.length() == 0)
+                        {
+                            break;
+                        }
+                    }
+
+                    final char[] fileBody = new char[fileBodyLength];
+                    input.read(fileBody);
+                    String content = new String(fileBody);
+
+                    fileBW.write(content);
+                    fileBW.close();
+
+                    methodRequestGET_HEAD_PUT.putConfirmation(output, dataOutput, fileLength, content);
+                    //PUT clientPUT = new PUT(clientSocketConnection.getInputStream(), clientSocketConnection.getOutputStream());
                 }
 
                 if(verbose)
