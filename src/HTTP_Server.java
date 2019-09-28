@@ -18,8 +18,6 @@ public class HTTP_Server implements Runnable
     //Port for listening.
     static final int port = 8080;
 
-    static Thread thread;
-
     //Verbose mode to print server statuses to console.
     static final boolean verbose = true;
 
@@ -66,7 +64,6 @@ public class HTTP_Server implements Runnable
         String fileRequested = null;
 
         //Grab the portion of the request that contains the file body for PUT.
-        //String fileBody = null;
         int fileBodyLength = -1;
         BufferedWriter fileBW = null;
 
@@ -97,9 +94,6 @@ public class HTTP_Server implements Runnable
             //Get the file requested.
             fileRequested = parse.nextToken().toLowerCase();
 
-            //Get the fileBody from parse.
-            //fileBody = parse.nextToken();
-
             methodRequestGET_HEAD_PUT = new GET_HEAD_PUT();
 
             //if method does not match GET and GET_HEAD methods.
@@ -119,9 +113,7 @@ public class HTTP_Server implements Runnable
             }
             else
             {
-                //fileRequested.endsWith("/") && !fileRequested.startsWith("/")
                 //GET, HEAD, and PUT methods are supported.
-
                 int check = fileRequested.length();
 
                 if(fileRequested.startsWith("/") && check == 1)
@@ -142,22 +134,18 @@ public class HTTP_Server implements Runnable
                 //GET method to return files.
                 if(method.equals("GET"))
                 {
-                    //methodRequestGETHEAD.readFileData(file, fileLength);
                     methodRequestGET_HEAD_PUT.getConfirmation(output, dataOutput, fileLength);
                 }
 
                 //HEAD method to return only the header of the requested file.
                 else if(method.equals("HEAD"))
                 {
-                    //methodRequestGETHEAD.readFileData(file, fileLength);
                     methodRequestGET_HEAD_PUT.getHEADRequest(output, fileLength);
                 }
 
                 //PUT method to write data to file.
                 else if(method.equals("PUT") || method.equals("POST"))
                 {
-                    //methodRequestGET_HEAD_PUT.contentType = "application/x-www-form-urlencoded";
-
                     String userInput;
                     String contentLengthStr = "Content-Length: ";
 
@@ -184,7 +172,6 @@ public class HTTP_Server implements Runnable
                     fileBW.close();
 
                     methodRequestGET_HEAD_PUT.putConfirmation(output, dataOutput, fileLength, content);
-                    //PUT clientPUT = new PUT(clientSocketConnection.getInputStream(), clientSocketConnection.getOutputStream());
                 }
 
                 if(verbose)
