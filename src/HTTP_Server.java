@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.util.Date;
 import java.util.StringTokenizer;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class HTTP_Server implements Runnable
@@ -17,10 +18,10 @@ public class HTTP_Server implements Runnable
     //Port for listening.
     static final int port = 8080;
 
+    static Thread thread;
+
     //Verbose mode to print server statuses to console.
     static final boolean verbose = true;
-
-    static boolean serverStopped = false;
 
     //Client connection via Socket class.
     private Socket clientSocketConnection;
@@ -37,8 +38,10 @@ public class HTTP_Server implements Runnable
             ServerSocket serverConnection = new ServerSocket(port);
             System.out.println("Server started. Listening for connections on port: " + port + "...\n");
 
+            ExecutorService executor = Executors.newFixedThreadPool(100);
+
             //Listen until user halts server execution.
-            while(!serverStopped)
+            while(true)
             {
                 HTTP_Server myServer = new HTTP_Server(serverConnection.accept());
 
@@ -47,25 +50,13 @@ public class HTTP_Server implements Runnable
                     System.out.println("Connection opened. (" + new Date() + ")");
                 }
 
-                //Create thread to manage the server.
-                Thread thread = new Thread(myServer);
-                thread.start();
+                //Start the multithreading for this server.
+                executor.execute(myServer);
             }
         }
         catch(IOException e)
         {
             System.out.println("Server connection error via port: " + port);
-        }
-    }
-
-    public synchronized void stop()
-    {
-        this.serverStopped = true;
-        try{
-            this.clientSocketConnection.close();
-        }catch(IOException e)
-        {
-            e.printStackTrace();
         }
     }
 
